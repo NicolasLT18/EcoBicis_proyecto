@@ -18,6 +18,12 @@ import pandas as pd
 DATA_DIR = Path(__file__).resolve().parent / "data"
 RUTA_VIAJES = DATA_DIR / "viajes_ecobici_092026.csv"
 RUTA_ESTACIONES = DATA_DIR / "estaciones_ecobici.csv"
+RUTA_OCTUBRE = DATA_DIR / "public_data_web_2026-10.csv"
+RUTA_GBFS = DATA_DIR / "gbfs_station_information_2026-11-27.json"
+
+# Días que no se comportan como un día hábil normal
+FERIADOS = ["2026-09-16"]                                       # Día de la Independencia
+CIERRE_BUENAVISTA = ["2026-09-14", "2026-09-15", "2026-09-16"]  # nodo Buenavista sin actividad
 
 DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 RANGOS_EDAD = {
@@ -84,6 +90,20 @@ def limpiar_estaciones(estaciones: pd.DataFrame) -> pd.DataFrame:
 
 def cargar_estaciones(ruta=RUTA_ESTACIONES) -> pd.DataFrame:
     return limpiar_estaciones(cargar_estaciones_raw(ruta))
+
+
+def cargar_capacidades(ruta=RUTA_GBFS) -> pd.Series:
+    """Capacidad C (número de puertos) por estación, tomada del feed público GBFS de Ecobici.
+
+    El `short_name` del GBFS es el mismo número de estación de los viajes ("271-272" -> 271).
+    Ojo: es una foto del 27-nov-2026, no necesariamente la capacidad exacta de sep-oct.
+    """
+    import json
+
+    with open(ruta, encoding="utf-8") as f:
+        gbfs = pd.DataFrame(json.load(f)["data"]["stations"])
+    gbfs["num_cicloe"] = limpiar_id_estacion(gbfs["short_name"])
+    return gbfs.set_index("num_cicloe")["capacity"].astype(int).sort_index()
 
 
 # ---------------------------------------------------------------------------
